@@ -1,0 +1,13 @@
+This Gazebo plugin models the RF GPS occlusion and multipath interference experienced by a tube-launched UAV (such as a Starling drone) stored inside a metal launcher prior to deployment.
+The plugin functions as a transport relay:
+1. It subscribes to the raw Gazebo `NavSat` sensor topic (`.../navsat_raw`).
+2. It corrupts the sensor data by injecting Gaussian noise and deterministic bias into the latitude, longitude, and altitude fields.
+3. It republishes the degraded `NavSat` message onto the active topic consumed by PX4’s `EKF2` state estimator (`.../navsat`).
+**Simulation Workflow & Launch Sequence**
+
+- **Initialization & Arming:** Before launch, the drone rests inside a angled tube model. The plugin immediately initializes with a maximum degradation factor of $1.0$. Because the injected noise causes high horizontal position variance, standard PX4 pre-flight checks fail. To arm the drone inside the tube, pre-flight GPS checks must be bypassed (e.g., enabling `COM_ARM_WO_GPS or from the PX4 terminal with commander arm -f`).
+- **Launch Trigger:** An instantaneous impulse force ($5000\text{ N}$ along the drone’s local Z-axis) simulates the launcher charge. The plugin monitors the drone's linear speed; once it exceeds the launch velocity threshold, it triggers the recovery sequence.
+- **Signal Recovery:** Upon launch detection, the degradation factor decays linearly from $1.0$ down to $0.0$ over a $30$-second recovery window, modeling the time required for the receiver to re-acquire clean line-of-sight satellite signals after clearing the tube rim.
+
+**Observed Flight Behavior**
+During testing in HOLD mode, the drone exhibits significant erratic movement upon launch. In HOLD mode, PX4 actively attempts to maintain a fixed spatial coordinate. As the plugin injects artificial position noise, the EKF updates the estimated position away from the target setpoint. The position controller interprets this as physical drift and commands motor thrust to correct the false error, causing the drone to aggressively 'chase' the noise. As the degradation factor decays toward zero, the estimated position converges back to the drone's true position, and the aircraft stabilizes into a stationary hover. If the artificial position noise is high enough (e.g., jumping $15\text{ meters}$ in a single step), the EKF's position innovation test ratio spikes past its maximum value and the EKF rejects the GPS sample. This causes the EKF to rely on the IMU or other onboard sensors for position estimate and the drone drifts until a more trustworthy GPS sample is received. 
