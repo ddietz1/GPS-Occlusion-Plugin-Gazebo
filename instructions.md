@@ -11,3 +11,23 @@ The plugin functions as a transport relay:
 
 **Observed Flight Behavior**
 During testing in HOLD mode, the drone exhibits significant erratic movement upon launch. In HOLD mode, PX4 actively attempts to maintain a fixed spatial coordinate. As the plugin injects artificial position noise, the EKF updates the estimated position away from the target setpoint. The position controller interprets this as physical drift and commands motor thrust to correct the false error, causing the drone to aggressively 'chase' the noise. As the degradation factor decays toward zero, the estimated position converges back to the drone's true position, and the aircraft stabilizes into a stationary hover. If the artificial position noise is high enough (e.g., jumping $15\text{ meters}$ in a single step), the EKF's position innovation test ratio spikes past its maximum value and the EKF rejects the GPS sample. This causes the EKF to rely on the IMU or other onboard sensors for position estimate and the drone drifts until a more trustworthy GPS sample is received. 
+
+**Steps for running the system**
+1. Download Gazebo Harmonic
+2. Pull the latest PX4 version
+3. Pull the body_wrench custom Gazebo plugin
+4. Create a new sdf file in the PX4-Autopilot/Tools/simulation/gz/worlds/ directory
+5. Include the following plugins within the `<world>` tag
+    1. `gz-sim-physics-system`
+    2. `gz-sim-scene-broadcaster-system`
+    3. `gz-sim-user-commands-system`
+    4. `gz-sim-imu-system`
+    5. `gz-sim-magnetometer-system`
+    6. `gz-sim-navsat-system`
+    7. `gz-sim-air-pressure-system`
+    8. `gz-sim-apply-link-wrench-system`
+    9. `gz-sim-wind-effects-system`
+6. Navigate to PX4-Autopilot/Tools/simulation/gz/models/x500_base/model.sdf
+7. Add a new sensor of type=`navsat` within the `<link>` tag using the parameters specified below. Include the plugin with filename=`libGpsDegradationPlugin.so`
+8. Include a new plugin within the `<world>` tag and add filename=`libBodyWrench.so`
+9. 
