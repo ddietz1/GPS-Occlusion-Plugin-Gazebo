@@ -30,4 +30,18 @@ During testing in HOLD mode, the drone exhibits significant erratic movement upo
 6. Navigate to PX4-Autopilot/Tools/simulation/gz/models/x500_base/model.sdf
 7. Add a new sensor of type=`navsat` within the `<link>` tag using the parameters specified below. Include the plugin with filename=`libGpsDegradationPlugin.so`
 8. Include a new plugin within the `<world>` tag and add filename=`libBodyWrench.so`
-9. 
+**Commands to run the simulation**
+First use QGC or the PX4 terminal to set the parameter `COM_THROW_EN` to Enabled. The default value for `COM_THROW_SPEED` will work but can be adjusted based on user need.
+To run the Gazebo world simulation
+```bash
+PX4_GZ_WORLD=<new_world_sdf> make px4_sitl gz_x500
+```
+
+Arm the drone from the PX4 terminal
+
+To command the wrench
+```bash
+gz topic -t "/world/<new_world_sdf>/wrench"   -m gz.msgs.EntityWrench   -p 'entity: {name: "x500_0", type: MODEL},
+
+wrench: {force: {x: 0, y: 0, z: 5000}}'
+```
