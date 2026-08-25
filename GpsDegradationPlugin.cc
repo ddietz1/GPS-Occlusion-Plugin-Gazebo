@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Derek Dietz
+
 #include <gz/sim/System.hh>
 #include <gz/sim/components/LinearVelocity.hh>
 #include <gz/sim/components/Link.hh>
@@ -34,15 +37,37 @@ public:
             _ecm.CreateComponent(this->linkEntity, gz::sim::components::WorldLinearVelocity());
         }
 
+        // <raw_topic>/<output_topic> must be supplied via the SDF <plugin>
+        // block so this plugin isn't tied to one specific world/model name.
+        // raw_topic should match the sibling <sensor>'s <topic> (where the
+        // undegraded NavSat data is published); output_topic should match
+        // whatever topic PX4's gz_bridge/EKF2 driver expects (normally the
+        // sensor's default, unsuffixed topic).
         std::string sub_topic = "/world/dereks_world/model/x500_0/link/base_link/sensor/navsat_sensor/navsat_raw";
         std::string pub_topic = "/world/dereks_world/model/x500_0/link/base_link/sensor/navsat_sensor/navsat";
+
+        if (_sdf->HasElement("raw_topic")) {
+            sub_topic = _sdf->Get<std::string>("raw_topic");
+        } else {
+            gzwarn << "[GpsDegradationPlugin] no <raw_topic> specified, falling back to "
+                   << "a hardcoded default [" << sub_topic << "]. Set <raw_topic> explicitly "
+                   << "to match this sensor's <topic> element.\n";
+        }
+
+        if (_sdf->HasElement("output_topic")) {
+            pub_topic = _sdf->Get<std::string>("output_topic");
+        } else {
+            gzwarn << "[GpsDegradationPlugin] no <output_topic> specified, falling back to "
+                   << "a hardcoded default [" << pub_topic << "].\n";
+        }
 
         this->pub = this->node.Advertise<gz::msgs::NavSat>(pub_topic);
         this->node.Subscribe(sub_topic, &GpsDegradationPlugin::OnNavSatMsg, this);
 
         this->rng.seed(1337);
 
-        gzmsg << "[GpsDegradationPlugin] INITIALIZED\n";
+        gzmsg << "[GpsDegradationPlugin] INITIALIZED - subscribing to [" << sub_topic
+              << "], publishing to [" << pub_topic << "]\n";
     }
 
     void PostUpdate(const gz::sim::UpdateInfo &_info,
